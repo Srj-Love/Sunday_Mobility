@@ -79,4 +79,12 @@ class UserAdapter
     }
 
     override fun getItemCount() = mList.size
+
+    public fun deleteData(position:Int){
+        if (position >= 0) {
+            mList.removeAt(position)
+            notifyItemRemoved(position)
+            notifyItemChanged(position, mList.size)
+        }
+    }
 }

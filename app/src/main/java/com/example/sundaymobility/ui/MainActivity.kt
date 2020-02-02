@@ -2,42 +2,52 @@ package com.example.sundaymobility.ui
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log.i
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.sundaymobility.R
 import com.example.sundaymobility.adapter.UserAdapter
+import com.example.sundaymobility.factory.MainViewModelFactory
 import com.example.sundaymobility.model.UserModel
+import com.example.sundaymobility.repository.UserRepository
 import com.example.sundaymobility.utils.Constants
 import com.example.sundaymobility.utils.Constants.Companion.PHOTO_REQUEST_CODE
 import com.example.sundaymobility.utils.Constants.Companion.getAPI
 import com.example.sundaymobility.utils.data
-import io.reactivex.android.schedulers.AndroidSchedulers
+import com.example.sundaymobility.viewmodel.MainViewModel
 import io.reactivex.disposables.CompositeDisposable
-import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 
 
 class MainActivity : AppCompatActivity(), UserAdapter.AlbumCallback {
 
 
-    private val mDisposable = CompositeDisposable()
     private val mService by lazy { getAPI() }
 
 
     private lateinit var mList: MutableList<UserModel>
     private lateinit var mAdapter: UserAdapter
-
+    var model: MainViewModel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+
+
+        model = ViewModelProviders.of(
+            this,
+            MainViewModelFactory(UserRepository(mService))
+        )[MainViewModel::class.java]
+
         init()
     }
 
     private fun init() {
+
 
         supportActionBar?.show()
         mList = arrayListOf()
@@ -50,8 +60,8 @@ class MainActivity : AppCompatActivity(), UserAdapter.AlbumCallback {
         fab_add.setOnClickListener {
             addUser()
         }
-        pb.visibility = View.VISIBLE
-        mDisposable.add(
+//        pb.visibility = View.VISIBLE
+        /*mDisposable.add(
             mService.getUsers()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -62,7 +72,13 @@ class MainActivity : AppCompatActivity(), UserAdapter.AlbumCallback {
                     pb.visibility = View.GONE
                     i("ERROR: ", throwable.message.toString())
                 })
-        )
+        )*/
+
+        pb.visibility = View.VISIBLE
+        model!!.getUsers().observe(this, Observer<List<UserModel>> { users ->
+            handleUserData(users)
+        })
+
 
     }
 
@@ -82,7 +98,7 @@ class MainActivity : AppCompatActivity(), UserAdapter.AlbumCallback {
     }
 
     private fun handleUserData(model: List<UserModel>) {
-
+        pb.visibility = View.GONE
         if (model.isNotEmpty()) {
 
             showRCV()
@@ -104,15 +120,6 @@ class MainActivity : AppCompatActivity(), UserAdapter.AlbumCallback {
         rcv_user.visibility = View.GONE
     }
 
-    override fun onStop() {
-        super.onStop()
-        mDisposable.clear()
-    }
-
-    override fun onDestroy() {
-        mDisposable.dispose()
-        super.onDestroy()
-    }
 
     override fun onPhotoClick(position: Int) {
 
@@ -153,12 +160,7 @@ class MainActivity : AppCompatActivity(), UserAdapter.AlbumCallback {
         }
     }
 
-    private fun deletePhoto(position: Int) {
-        if (position >= 0) {
-            mList.removeAt(position)
-            mAdapter.notifyItemRemoved(position)
-            mAdapter.notifyItemChanged(position, mList.size)
-        }
-    }
+    private fun deletePhoto(position: Int) = mAdapter.deleteData(position)
+
 
 }
